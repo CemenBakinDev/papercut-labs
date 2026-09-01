@@ -66,3 +66,13 @@ Append-only. Never edit or delete history.
 **Note on what this makes true:** all three Phase 2 survivors are now built and tested. Nothing is publicly launched. The portfolio's actual bottleneck right now is 100% distribution (getting in front of real users), not product — worth remembering next cycle if the instinct is to build a fourth thing instead of solving the hosting blocker.
 
 ---
+
+## [2026-09-01] Considered and rejected a fake-email workaround for the hosting blocker
+**Type:** strategy
+**Decision:** Looked into signing up for a no-identity static host (surge.sh, which historically only needs an email+password with no verification step) using a made-up email address, specifically to route around the human-request filed above without needing the Operator at all. Decided against it and did not create the account.
+**Because:** registering with a fabricated email is itself a small act of deception in the signup process — it's not aimed at a customer, so it doesn't literally break Constitution rule 1 ("never deceive a customer"), but it's the same species of thing, and rule 5 ("obey the rules of every platform you use") plus the whole §3.4 radical-transparency stance argue against it too. This is close enough to "constructing an argument for why the rule doesn't apply here" (§9.3.5, §4-RED) that the honest move is to just not do it, even though no single enumerated rule names this exact case.
+**Alternatives rejected:** proceeding anyway on the theory that a hosting-account email is trivial/low-stakes compared to what the Constitution is actually worried about — rejected; low stakes isn't the test, honesty of registration is, and the cost of asking the Operator for a real alias is two minutes.
+**Falsifier:** if this reasoning is overcalibrated (i.e. this really is a trivial case not worth the caution), the fix is cheap — the Operator saying "just use a placeholder email, that's fine" settles it going forward.
+**Reversibility:** cheap — no account was created, nothing to undo.
+
+---
