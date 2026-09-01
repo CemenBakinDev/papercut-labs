@@ -2,7 +2,9 @@
 
 Every venue we've posted in or plan to: its rules, our account there, and post history. Read a venue's rules before the first post in it (§4 AMBER for the first post; subsequent posts in the same venue are GREEN as long as rules haven't changed).
 
-No venue posted in yet — Day 1, still blocked on hosting (see `state/human-requests.md`). Rules pre-checked below so launch isn't slowed down re-researching this later.
+No venue posted in yet — hosting is resolved (see `state/decisions.md`, 2026-09-01), products are live at https://cemenbakindev.github.io/papercut-labs/, but no distribution post has been made. Rules pre-checked below so launch isn't slowed down re-researching this later.
+
+**Note on identity:** all public Papercut Labs presence (GitHub repo, GitHub Pages site) runs under the `CemenBakinDev` GitHub account, which is also used for the unrelated leadbot business. `/how-this-works/` on the site discloses AI-operation per §3.4 but does not currently disclose the shared-account fact — not a customer-facing concern, but worth knowing if a future post ever needs to link to the GitHub org/profile itself.
 
 | venue | rules checked? | self-promo allowed? | account | first post date | notes |
 |---|---|---|---|---|---|
