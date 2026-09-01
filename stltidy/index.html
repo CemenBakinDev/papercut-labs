@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>STLTidy — know what's in your STL folder without a subscription</title>
+<style>
+  :root{
+    --bg:#faf9f7; --panel:#ffffff; --ink:#1c1a17; --muted:#6b6459;
+    --accent:#2b6f8f; --accent-ink:#ffffff; --line:#e7e2d9; --row-alt:#f4f1ea;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#14171a; --panel:#1c2126; --ink:#eef1f3; --muted:#9aa4ab;
+      --accent:#5fa8cc; --accent-ink:#0c1013; --line:#2c333a; --row-alt:#20262b; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+  header{max-width:1000px;margin:0 auto;padding:2.5rem 1.5rem 1rem}
+  h1{font-size:1.6rem;margin:0 0 .3rem}
+  .tag{color:var(--muted);font-size:1rem;margin:0 0 1.2rem}
+  main{max-width:1000px;margin:0 auto;padding:0 1.5rem 3rem}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:1.2rem;margin-bottom:1rem}
+  .dropzone{border:2px dashed var(--line);border-radius:10px;padding:2.2rem 1rem;text-align:center;color:var(--muted);cursor:pointer}
+  .dropzone.drag{border-color:var(--accent);color:var(--accent)}
+  input[type=file]{display:none}
+  button{background:var(--accent);color:var(--accent-ink);border:none;border-radius:6px;padding:.55rem 1rem;font-size:.9rem;font-weight:600;cursor:pointer}
+  button.secondary{background:transparent;color:var(--ink);border:1px solid var(--line)}
+  .toolbar{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin-bottom:.8rem}
+  .toolbar input[type=search]{flex:1;min-width:180px;padding:.5rem .7rem;border:1px solid var(--line);border-radius:6px;background:transparent;color:var(--ink)}
+  table{width:100%;border-collapse:collapse;font-size:.88rem}
+  th{text-align:left;padding:.5rem .6rem;color:var(--muted);font-weight:600;font-size:.78rem;text-transform:uppercase;letter-spacing:.02em;border-bottom:1px solid var(--line)}
+  td{padding:.5rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}
+  tr:nth-child(even) td{background:var(--row-alt)}
+  td.name{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.82rem;word-break:break-all}
+  td.tags input{width:100%;padding:.3rem .5rem;border:1px solid var(--line);border-radius:5px;background:transparent;color:var(--ink);font-size:.82rem}
+  .muted{color:var(--muted)}
+  .stats{color:var(--muted);font-size:.85rem;margin-bottom:.6rem}
+  .empty{color:var(--muted);padding:1.5rem 0;text-align:center}
+  footer{max-width:1000px;margin:2rem auto 0;padding:1.2rem 1.5rem;border-top:1px solid var(--line);color:var(--muted);font-size:.8rem}
+</style>
+</head>
+<body>
+<header>
+  <h1>STLTidy</h1>
+  <p class="tag">Drop your messy STL folder in. Search, tag, and export a catalog you keep — no subscription, no self-hosted server, nothing uploaded anywhere.</p>
+</header>
+<main>
+  <div class="panel">
+    <div id="dropzone" class="dropzone">
+      Drop a folder of STL files here, or click to choose one.
+      <input type="file" id="fileInput" webkitdirectory directory multiple>
+    </div>
+  </div>
+
+  <div class="panel" id="catalogPanel" style="display:none">
+    <div class="toolbar">
+      <input type="search" id="searchBox" placeholder="Search by filename or tag…">
+      <button id="exportBtn" class="secondary">Export standalone catalog (.html)</button>
+    </div>
+    <div class="stats" id="statsLine"></div>
+    <div id="tableWrap"></div>
+  </div>
+  <div class="panel empty" id="emptyState">No folder loaded yet.</div>
+</main>
+<footer>
+  Everything runs in your browser. No files are uploaded anywhere — filenames, sizes, and tags are read and stored locally on your machine only.
+  Tags are saved in this browser (matched by filename + size, so re-loading the same folder later restores them). Built and maintained by Papercut Labs, an AI-operated project.
+</footer>
+
+<script>
+(function(){
+  "use strict";
+
+  var TAGS_KEY = "stltidy_tags_v1";
+  var dropzone = document.getElementById("dropzone");
+  var fileInput = document.getElementById("fileInput");
+  var catalogPanel = document.getElementById("catalogPanel");
+  var emptyState = document.getElementById("emptyState");
+  var tableWrap = document.getElementById("tableWrap");
+  var statsLine = document.getElementById("statsLine");
+  var searchBox = document.getElementById("searchBox");
+  var exportBtn = document.getElementById("exportBtn");
+
+  var items = []; // { path, name, size, triangles, format, key }
+
+  function loadTags(){
+    try {
+      var raw = localStorage.getItem(TAGS_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch (e) { return {}; }
+  }
+  function saveTags(tags){
+    try { localStorage.setItem(TAGS_KEY, JSON.stringify(tags)); } catch (e) { /* ignore */ }
+  }
+  var tagStore = loadTags();
+
+  function keyFor(relPath, size){
+    return relPath + "::" + size;
+  }
+
+  function fmtSize(bytes){
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + " KB";
+    return (bytes/(1024*1024)).toFixed(1) + " MB";
+  }
+
+  function readTriangleInfo(file){
+    return new Promise(function(resolve){
+      var reader = new FileReader();
+      reader.onload = function(){
+        try {
+          var buf = reader.result;
+          var bytes = new Uint8Array(buf);
+          var headStr = "";
+          for (var i = 0; i < Math.min(5, bytes.length); i++) headStr += String.fromCharCode(bytes[i]);
+          if (headStr.toLowerCase() === "solid" && file.size < 5*1024*1024) {
+            // Likely ASCII STL (heuristic only — binary files can also start with "solid").
+            resolve({ format: "ascii?", triangles: null });
+            return;
+          }
+          if (buf.byteLength >= 84) {
+            var view = new DataView(buf);
+            var count = view.getUint32(80, true);
+            var expected = 84 + count * 50;
+            if (Math.abs(expected - file.size) < 1) {
+              resolve({ format: "binary", triangles: count });
+              return;
+            }
+          }
+          resolve({ format: "unknown", triangles: null });
+        } catch (e) {
+          resolve({ format: "unknown", triangles: null });
+        }
+      };
+      reader.onerror = function(){ resolve({ format: "unknown", triangles: null }); };
+      reader.readAsArrayBuffer(file.slice(0, 84));
+    });
+  }
+
+  function processFiles(fileList){
+    var files = Array.prototype.filter.call(fileList, function(f){
+      return /\.stl$/i.test(f.name);
+    });
+    if (files.length === 0) {
+      emptyState.textContent = "No .stl files found in that selection.";
+      emptyState.style.display = "block";
+      catalogPanel.style.display = "none";
+      return;
+    }
+    Promise.all(files.map(function(f){
+      var relPath = f.webkitRelativePath || f.name;
+      return readTriangleInfo(f).then(function(info){
+        return {
+          path: relPath,
+          name: f.name,
+          size: f.size,
+          triangles: info.triangles,
+          format: info.format,
+          key: keyFor(relPath, f.size)
+        };
+      });
+    })).then(function(results){
+      items = results;
+      emptyState.style.display = "none";
+      catalogPanel.style.display = "block";
+      render();
+    });
+  }
+
+  fileInput.addEventListener("change", function(e){
+    processFiles(e.target.files);
+  });
+  dropzone.addEventListener("click", function(){ fileInput.click(); });
+  dropzone.addEventListener("dragover", function(e){ e.preventDefault(); dropzone.classList.add("drag"); });
+  dropzone.addEventListener("dragleave", function(){ dropzone.classList.remove("drag"); });
+  dropzone.addEventListener("drop", function(e){
+    e.preventDefault();
+    dropzone.classList.remove("drag");
+    var dt = e.dataTransfer;
+    if (dt && dt.files && dt.files.length) processFiles(dt.files);
+  });
+
+  function escapeHtml(s){
+    return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+
+  function render(){
+    var q = (searchBox.value || "").toLowerCase().trim();
+    var visible = items.filter(function(it){
+      if (!q) return true;
+      var tag = (tagStore[it.key] || "").toLowerCase();
+      return it.path.toLowerCase().indexOf(q) !== -1 || tag.indexOf(q) !== -1;
+    });
+    statsLine.textContent = items.length + " STL file(s) found" + (q ? (", " + visible.length + " matching “" + q + "”") : "") + ".";
+
+    var html = '<table><thead><tr><th>File</th><th>Size</th><th>Triangles</th><th>Tags / notes</th></tr></thead><tbody>';
+    visible.forEach(function(it){
+      html += '<tr>' +
+        '<td class="name">' + escapeHtml(it.path) + '</td>' +
+        '<td>' + fmtSize(it.size) + '</td>' +
+        '<td class="muted">' + (it.triangles != null ? it.triangles.toLocaleString() : (it.format === "ascii?" ? "ASCII (n/a)" : "—")) + '</td>' +
+        '<td class="tags"><input type="text" data-key="' + escapeHtml(it.key) + '" value="' + escapeHtml(tagStore[it.key] || "") + '" placeholder="add tags…"></td>' +
+        '</tr>';
+    });
+    html += '</tbody></table>';
+    if (visible.length === 0) html = '<p class="empty">No files match that search.</p>';
+    tableWrap.innerHTML = html;
+
+    Array.prototype.forEach.call(tableWrap.querySelectorAll('input[data-key]'), function(inp){
+      inp.addEventListener("input", function(){
+        tagStore[inp.getAttribute("data-key")] = inp.value;
+        saveTags(tagStore);
+      });
+    });
+  }
+
+  searchBox.addEventListener("input", render);
+
+  exportBtn.addEventListener("click", function(){
+    var rows = items.map(function(it){
+      return { path: it.path, size: it.size, triangles: it.triangles, format: it.format, tags: tagStore[it.key] || "" };
+    });
+    var dataJson = JSON.stringify(rows).replace(/</g, "\\u003c");
+    var exportHtml = "<!doctype html><html><head><meta charset='utf-8'><title>STL Catalog export</title>" +
+      "<style>body{font:14px sans-serif;margin:2rem;color:#222}table{border-collapse:collapse;width:100%}" +
+      "td,th{border:1px solid #ccc;padding:6px 8px;text-align:left;font-size:13px}th{background:#f0f0f0}" +
+      "input{width:100%;box-sizing:border-box;padding:4px}</style></head><body>" +
+      "<h2>STL Catalog — exported " + new Date().toISOString().slice(0,10) + "</h2>" +
+      "<input id='q' placeholder='Search...' style='margin-bottom:10px;padding:8px;width:100%;box-sizing:border-box'>" +
+      "<table id='t'><thead><tr><th>File</th><th>Size</th><th>Triangles</th><th>Tags</th></tr></thead><tbody></tbody></table>" +
+      "<script>var DATA=" + dataJson + ";" +
+      "function fmt(b){return b<1024?b+' B':b<1048576?(b/1024).toFixed(1)+' KB':(b/1048576).toFixed(1)+' MB';}" +
+      "function draw(q){var tb=document.querySelector('#t tbody');tb.innerHTML='';DATA.filter(function(r){" +
+      "return !q||r.path.toLowerCase().indexOf(q)>-1||(r.tags||'').toLowerCase().indexOf(q)>-1;}).forEach(function(r){" +
+      "var tr=document.createElement('tr');tr.innerHTML='<td>'+r.path+'</td><td>'+fmt(r.size)+'</td><td>'+(r.triangles!=null?r.triangles:'—')+'</td><td>'+(r.tags||'')+'</td>';" +
+      "tb.appendChild(tr);});}" +
+      "document.getElementById('q').addEventListener('input',function(e){draw(e.target.value.toLowerCase());});" +
+      "draw('');<\/script></body></html>";
+    var blob = new Blob([exportHtml], {type:"text/html"});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "stl-catalog.html";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+})();
+</script>
+</body>
+</html>
