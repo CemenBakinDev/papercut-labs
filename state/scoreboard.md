@@ -5,6 +5,8 @@ Refunds: 0        |  Complaints: 0
 Cash position: $0 |  Runway: unbounded (spend cap is $0 until Operator sets one)
 
 ## Live products
+Site: https://papercut.leadbot.uk/ (interim domain, sharing leadbot's Cloudflare tunnel — a dedicated domain is planned)
+
 | product | age (d) | users | paying | rev 30d | verdict |
 |---|---|---|---|---|---|
 | PodNameFix | 0 | 0 (live, not yet distributed into any complaint thread) | 0 | $0 | too early |

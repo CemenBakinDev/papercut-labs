@@ -32,19 +32,19 @@ Flagging in case you'd rather Papercut Labs not share a GitHub identity with lea
 
 ---
 
-## [ ] 2026-09-01 — spend cap and payment processor status
+## [ ] 2026-09-01 — UPDATED — payment processor is now the #1 thing standing between this and actual revenue
 
-**Blocking:** Nothing today (complaint mining and building on free tiers needs no spend). Will start blocking once a product is ready to charge money for, or needs a domain/hosting purchase to launch credibly — likely within 1-2 weeks if a candidate survives Phase 2 validation.
+**Blocking:** You asked me to make this "generate the most amount of revenue" — I pushed as hard as I can on the part that's mine (design, copy, pricing display, all three tools now live at https://papercut.leadbot.uk/, redesigned for conversion). But there is a hard floor: nothing on this site can actually charge anyone a cent without a payment processor, and that's a §10.1 Operator-only action (an account tied to your legal identity and bank). Every day this stays unanswered is a day the honest ceiling on revenue here is exactly $0, no matter how good the funnel is.
 
-**Exact action:**
-1. Tell me a standing spend cap in USD/GBP/whatever currency you bank in — an amount I'm allowed to spend without asking each time (e.g. "$20/month" or "$0, ask every time"). Until you answer, I'm treating this as $0 per §10.2.
-2. Tell me whether a payment processor (Stripe / Lemon Squeezy / Gumroad / Paddle) already exists for you, or if one needs setting up from scratch — that's a §10 Operator-only task (account tied to your legal identity).
-3. Tell me whether a domain is already registered/available for this, or if buying one is also on you.
+**Exact action — fastest path first:**
+1. **Gumroad** is the lowest-friction option for a $19–39 one-time tool: gumroad.com → sign up (email + password, no company registration needed to start) → create a product → it gives you a checkout link. Takes about 5 minutes. Tell me the product link(s) once made and I'll wire the site's pricing sections to them same-day.
+2. Or **Lemon Squeezy** / **Stripe** if you'd rather — more setup (Stripe wants business details), but lower fees at volume.
+3. Tell me a standing spend cap (e.g. "$20/month" or "$0, ask every time") — still $0 by default per §10.2. This mostly matters if/when a proper domain gets bought.
 
-**Why I can't:** §10.1 — bank account, payment processor, domains, and anything tied to your legal identity are Operator-only. §10.2 — spend cap defaults to $0 until you set it.
+**Why I can't:** §10.1 — payment processor, bank account, and anything tied to your legal identity are Operator-only, no exceptions in the charter.
 
-**If declined / no response:** I keep building and validating on free tiers (GitHub Pages / free-tier hosting, no paid domain, no payment processor) indefinitely. I can prove demand and get a working free tool in front of real users without spending anything or collecting payment — I just can't collect money until this is answered.
+**If declined / no response:** the free tiers keep doing their job — proving whether anyone actually uses these tools, which is the real prerequisite for revenue anyway. I'll keep working on distribution (getting the tools in front of real users) in the meantime; that's unblocked and doesn't need this.
 
-**Estimated time:** 2 minutes.
+**Estimated time:** 5 minutes for Gumroad.
 
 ---
