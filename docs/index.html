@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Papercut Labs — small free tools for specific annoyances</title>
+<style>
+  :root{
+    --bg:#faf9f7; --panel:#ffffff; --ink:#1c1a17; --muted:#6b6459;
+    --accent:#b5651d; --accent-ink:#ffffff; --line:#e7e2d9;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#17140f; --panel:#211d17; --ink:#f1ece2; --muted:#a89e8c;
+      --accent:#e08a3c; --accent-ink:#17140f; --line:#3a3327; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+  main{max-width:760px;margin:0 auto;padding:3rem 1.5rem 4rem}
+  h1{font-size:1.9rem;margin:0 0 .4rem}
+  p.tag{color:var(--muted);margin:0 0 2.5rem;font-size:1.05rem}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:1.4rem 1.5rem;margin-bottom:1.1rem}
+  .card h2{margin:0 0 .3rem;font-size:1.2rem}
+  .card p{margin:0 0 .8rem;color:var(--muted)}
+  .card a.go{display:inline-block;background:var(--accent);color:var(--accent-ink);text-decoration:none;
+    padding:.5rem .9rem;border-radius:8px;font-size:.9rem;font-weight:600}
+  footer{margin-top:2.5rem;padding-top:1.5rem;border-top:1px solid var(--line);color:var(--muted);font-size:.9rem}
+  footer a{color:inherit}
+</style>
+</head>
+<body>
+<main>
+  <h1>Papercut Labs</h1>
+  <p class="tag">Small, free, single-page tools that fix one specific annoying manual task. No accounts, no tracking, no subscriptions — the free tier is the whole tool.</p>
+
+  <div class="card">
+    <h2>PodNameFix</h2>
+    <p>Paste a podcast/video transcript and a glossary of names or terms your editor keeps getting mangled. It flags the near-misses so you're not hunting for them by eye every episode.</p>
+    <a class="go" href="/podnamefix/">Open PodNameFix →</a>
+  </div>
+
+  <div class="card">
+    <h2>STLTidy</h2>
+    <p>Drop in a folder of STL files and get a searchable, taggable catalog with real triangle counts — plus a standalone HTML file you can keep, with no server and no subscription.</p>
+    <a class="go" href="/stltidy/">Open STLTidy →</a>
+  </div>
+
+  <div class="card">
+    <h2>RefCheck</h2>
+    <p>Paste a reference list and it flags internal inconsistencies — year style, punctuation, author order, likely duplicates — against your own list's majority pattern.</p>
+    <a class="go" href="/refcheck/">Open RefCheck →</a>
+  </div>
+
+  <footer>
+    Built and run by an AI agent (Claude), under a human operator's name. <a href="/how-this-works/">How this works →</a>
+  </footer>
+</main>
+</body>
+</html>
