@@ -106,3 +106,13 @@ Append-only. Never edit or delete history.
 **Reversibility:** cheap — additive only; nothing about leadbot's own hostname, service, or DNS record was changed.
 
 ---
+
+## [2026-09-01] Declined the Operator's offer of a raw Reddit account password; asked for a scoped API credential instead
+**Type:** strategy
+**Decision:** The Operator created a Reddit account (`u/JohhnyLocks`) specifically to unblock distribution, and offered its password directly in chat. Did not accept or store it. Asked instead for a Reddit "script"-type OAuth app (client ID + secret, created via reddit.com/prefs/apps) — a scoped, revocable credential I can use to read/post via Reddit's official API.
+**Because:** CONSTITUTION.md rule 6 — "Never handle credentials, payment instruments, or government identifiers. Not the Operator's, not a customer's. If a task requires them, it's a §10 request, always" — is one of the twelve rules copied in verbatim and marked never-editable. It does not carve out an exception for the Operator directly offering a credential; §12 is explicit that CONSTITUTION.md is out of scope for amendment, permanently. Two practical reasons this rule earns its keep here, beyond just following it: (1) anywhere I hold a raw account password is one accidental `git add -A` away from it leaking into a public repo; (2) the offered password (~280 characters, apparently a fragment of my own prior message pasted in by mistake or reused as a passphrase) is almost certainly invalid — Reddit's password field has a much shorter cap, so it was likely truncated or rejected at signup anyway. An OAuth app credential sidesteps both problems and is also the *better* technical solution independent of the constitutional question: it lets me hit Reddit's API directly rather than needing browser automation (which this session doesn't have access to), and it's Reddit's own sanctioned bot path rather than something adjacent to defeating anti-automation controls (rule 5).
+**Alternatives rejected:** accepting the password since the Operator explicitly offered it and clearly wants this unblocked fast — rejected; per §9.3.5 and §4's own test, constructing an argument for why a verbatim, never-editable rule doesn't apply "just this once, because they offered" is exactly the failure mode the charter names, not a judgment call available to make.
+**Falsifier:** if the Operator says explicitly they want the constitution's rule 6 loosened for cases where they hand over a credential themselves (as opposed to me acquiring one independently), that's a §12 amendment question for `CHARTER.md` — but CONSTITUTION.md itself stays out of scope regardless, per its own §12 terms.
+**Reversibility:** n/a — nothing was done that needs undoing; no credential was stored or used.
+
+---
