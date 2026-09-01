@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RefCheck — catch inconsistent reference formatting before your reviewer does</title>
+<style>
+  :root{
+    --bg:#faf9f7; --panel:#ffffff; --ink:#1c1a17; --muted:#6b6459;
+    --accent:#5a4b8f; --accent-ink:#ffffff; --line:#e7e2d9; --flag:#f1eefc; --flag-line:#c6b8ec;
+    --dup:#fdeeee; --dup-line:#e7b3b3;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#15141a; --panel:#1e1c25; --ink:#eeecf4; --muted:#a29cb3;
+      --accent:#a58ff0; --accent-ink:#15141a; --line:#332f40; --flag:#282438; --flag-line:#5c4d8c;
+      --dup:#301f21; --dup-line:#7a3f3f; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+  header{max-width:920px;margin:0 auto;padding:2.5rem 1.5rem 1rem}
+  h1{font-size:1.6rem;margin:0 0 .3rem}
+  .tag{color:var(--muted);font-size:1rem;margin:0 0 1.2rem}
+  main{max-width:920px;margin:0 auto;padding:0 1.5rem 3rem}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:1rem;margin-bottom:1rem}
+  label{display:block;font-weight:600;font-size:.85rem;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);margin-bottom:.4rem}
+  textarea{width:100%;min-height:260px;resize:vertical;background:transparent;color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:.6rem;font:13px/1.5 ui-monospace,Menlo,Consolas,monospace}
+  .hint{color:var(--muted);font-size:.8rem;margin-top:.4rem}
+  button{background:var(--accent);color:var(--accent-ink);border:none;border-radius:6px;padding:.6rem 1.1rem;font-size:.9rem;font-weight:600;cursor:pointer}
+  .actions{display:flex;gap:.6rem;margin:1rem 0;align-items:center;flex-wrap:wrap}
+  .issue{border-radius:8px;padding:.7rem .9rem;margin-bottom:.6rem;border:1px solid var(--flag-line);background:var(--flag)}
+  .issue.dup{border-color:var(--dup-line);background:var(--dup)}
+  .issue h3{margin:0 0 .3rem;font-size:.85rem;text-transform:uppercase;letter-spacing:.02em;color:var(--muted)}
+  .entry{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.82rem;background:rgba(0,0,0,.04);border-radius:5px;padding:.3rem .5rem;margin:.25rem 0;word-break:break-word}
+  .empty{color:var(--muted);padding:1rem 0}
+  .summary{color:var(--muted);font-size:.85rem;margin-bottom:.8rem}
+  footer{max-width:920px;margin:2rem auto 0;padding:1.2rem 1.5rem;border-top:1px solid var(--line);color:var(--muted);font-size:.8rem}
+</style>
+</head>
+<body>
+<header>
+  <h1>RefCheck</h1>
+  <p class="tag">Paste your reference list. Find the entries that don't match the others before a reviewer does.</p>
+</header>
+<main>
+  <div class="panel">
+    <label for="refs">Reference list — one entry per line</label>
+    <textarea id="refs" placeholder="Smith, J. (2020). A study of things. Journal of Studies, 12(3), 45-67.
+Doe, A. and Lee, B. 2019. Another study. Journal of Other Studies, 4, 1-9.
+..."></textarea>
+    <p class="hint">This checks internal consistency (does your own list format itself the same way throughout) — it does not know any specific journal's style rules, and it won't catch everything. Treat every flag as "worth a second look," not "definitely wrong."</p>
+  </div>
+  <div class="actions">
+    <button id="checkBtn">Check consistency</button>
+    <span id="statusMsg" class="hint"></span>
+  </div>
+  <div id="results"></div>
+</main>
+<footer>
+  Nothing you paste here is uploaded anywhere — this runs entirely in your browser. Built and maintained by Papercut Labs, an AI-operated project.
+</footer>
+
+<script>
+(function(){
+  "use strict";
+
+  function levenshtein(a, b){
+    var m = a.length, n = b.length;
+    if (m === 0) return n;
+    if (n === 0) return m;
+    var prev = new Array(n+1);
+    var cur = new Array(n+1);
+    for (var j=0;j<=n;j++) prev[j]=j;
+    for (var i=1;i<=m;i++){
+      cur[0]=i;
+      for (var j2=1;j2<=n;j2++){
+        var cost = a[i-1]===b[j2-1] ? 0 : 1;
+        cur[j2] = Math.min(prev[j2]+1, cur[j2-1]+1, prev[j2-1]+cost);
+      }
+      var tmp = prev; prev = cur; cur = tmp;
+    }
+    return prev[n];
+  }
+
+  function parseEntries(text){
+    return text.split("\n").map(function(l){ return l.trim(); }).filter(Boolean);
+  }
+
+  function detectYearStyle(entry){
+    if (/\(\s*(1[5-9]\d{2}|20\d{2})[a-z]?\s*\)/.test(entry)) return "paren";
+    if (/(?:^|[^(\d])(1[5-9]\d{2}|20\d{2})(?![)\d])/.test(entry)) return "bare";
+    return "none";
+  }
+
+  function detectTerminalPunct(entry){
+    var trimmed = entry.replace(/\s+$/, "");
+    var last = trimmed.slice(-1);
+    if (last === "." || last === "?" || last === "!") return "punct";
+    return "none";
+  }
+
+  function authorSegment(entry){
+    var yearMatch = entry.match(/\(?\s*(1[5-9]\d{2}|20\d{2})[a-z]?\s*\)?/);
+    if (yearMatch) return entry.slice(0, yearMatch.index);
+    return entry.slice(0, Math.min(entry.length, 80));
+  }
+
+  function detectConjunction(entry){
+    var seg = authorSegment(entry);
+    var hasAmp = /&/.test(seg);
+    var hasAnd = /\band\b/i.test(seg);
+    if (hasAmp && !hasAnd) return "ampersand";
+    if (hasAnd && !hasAmp) return "and";
+    if (hasAmp && hasAnd) return "mixed";
+    return "none";
+  }
+
+  function detectAuthorLead(entry){
+    if (/^[A-Z][A-Za-z'’\-]+,\s*[A-Z]\.\s*(?:[A-Z]\.)?/.test(entry)) return "lastfirst";
+    if (/^[A-Z]\.\s*(?:[A-Z]\.)?\s+[A-Z][A-Za-z'’\-]+/.test(entry)) return "firstlast";
+    return "unknown";
+  }
+
+  function normalizeForDuplicate(entry){
+    return entry.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+  }
+
+  function mode(values){
+    var counts = {};
+    values.forEach(function(v){ counts[v] = (counts[v]||0) + 1; });
+    var best = null, bestCount = 0;
+    Object.keys(counts).forEach(function(k){
+      if (counts[k] > bestCount) { bestCount = counts[k]; best = k; }
+    });
+    return { value: best, counts: counts };
+  }
+
+  var CHECKS = [
+    { key: "yearStyle", label: "Year style", detect: detectYearStyle, ignore: "none",
+      describe: function(v){ return v === "paren" ? "year in parentheses, e.g. (2020)" : "bare year with no parentheses, e.g. 2020."; } },
+    { key: "terminalPunct", label: "Ending punctuation", detect: detectTerminalPunct, ignore: null,
+      describe: function(v){ return v === "punct" ? "ends with a period" : "does not end with a period"; } },
+    { key: "conjunction", label: "Multi-author conjunction", detect: detectConjunction, ignore: "none",
+      describe: function(v){ return v === "ampersand" ? "uses \"&\" between authors" : v === "and" ? "uses \"and\" between authors" : "mixes \"&\" and \"and\" in the same entry"; } },
+    { key: "authorLead", label: "Author name order", detect: detectAuthorLead, ignore: "unknown",
+      describe: function(v){ return v === "lastfirst" ? "Last, F. order" : "F. Last order"; } }
+  ];
+
+  function analyze(text){
+    var entries = parseEntries(text);
+    var issues = [];
+
+    CHECKS.forEach(function(check){
+      var detected = entries.map(function(e){ return check.detect(e); });
+      var determinate = [];
+      entries.forEach(function(e, i){ if (check.ignore === null || detected[i] !== check.ignore) determinate.push({ entry: e, value: detected[i] }); });
+      if (determinate.length < 2) return;
+      var m = mode(determinate.map(function(d){ return d.value; }));
+      var distinctValues = Object.keys(m.counts);
+      if (distinctValues.length < 2) return;
+      var minority = determinate.filter(function(d){ return d.value !== m.value; });
+      if (minority.length === 0) return;
+      issues.push({
+        type: "consistency",
+        label: check.label,
+        majority: check.describe(m.value) + " (" + m.counts[m.value] + " of " + determinate.length + " entries)",
+        entries: minority.map(function(d){ return { text: d.entry, note: check.describe(d.value) }; })
+      });
+    });
+
+    var normalized = entries.map(normalizeForDuplicate);
+    var dupPairs = [];
+    for (var i = 0; i < entries.length; i++){
+      for (var j = i+1; j < entries.length; j++){
+        if (normalized[i].length < 15 || normalized[j].length < 15) continue;
+        var dist = levenshtein(normalized[i], normalized[j]);
+        var maxLen = Math.max(normalized[i].length, normalized[j].length);
+        var similarity = 1 - dist / maxLen;
+        if (similarity > 0.82) dupPairs.push({ a: entries[i], b: entries[j], similarity: similarity });
+      }
+    }
+    if (dupPairs.length > 0){
+      issues.push({
+        type: "duplicate",
+        label: "Likely duplicate entries",
+        pairs: dupPairs
+      });
+    }
+
+    return { entryCount: entries.length, issues: issues };
+  }
+
+  var refsEl = document.getElementById("refs");
+  var checkBtn = document.getElementById("checkBtn");
+  var statusEl = document.getElementById("statusMsg");
+  var resultsEl = document.getElementById("results");
+
+  function escapeHtml(s){
+    return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+
+  function render(result){
+    resultsEl.innerHTML = "";
+    var summary = document.createElement("div");
+    summary.className = "summary";
+    summary.textContent = result.entryCount + " reference(s) parsed. " +
+      (result.issues.length === 0 ? "No inconsistencies or likely duplicates found." : result.issues.length + " thing(s) worth a look:");
+    resultsEl.appendChild(summary);
+
+    result.issues.forEach(function(issue){
+      var div = document.createElement("div");
+      if (issue.type === "duplicate"){
+        div.className = "issue dup";
+        var html = "<h3>" + escapeHtml(issue.label) + "</h3>";
+        issue.pairs.forEach(function(p){
+          html += '<div class="entry">' + escapeHtml(p.a) + '</div>' +
+                  '<div class="entry">' + escapeHtml(p.b) + '</div>' +
+                  '<p class="hint">' + Math.round(p.similarity*100) + '% textually similar.</p>';
+        });
+        div.innerHTML = html;
+      } else {
+        div.className = "issue";
+        var html2 = "<h3>" + escapeHtml(issue.label) + "</h3>" +
+          '<p class="hint">Most of your list: ' + escapeHtml(issue.majority) + '. These don\'t match:</p>';
+        issue.entries.forEach(function(e){
+          html2 += '<div class="entry">' + escapeHtml(e.text) + '</div><p class="hint">' + escapeHtml(e.note) + '</p>';
+        });
+        div.innerHTML = html2;
+      }
+      resultsEl.appendChild(div);
+    });
+  }
+
+  checkBtn.addEventListener("click", function(){
+    var text = refsEl.value;
+    if (!text.trim()){
+      statusEl.textContent = "Paste a reference list first.";
+      return;
+    }
+    var result = analyze(text);
+    statusEl.textContent = "";
+    render(result);
+  });
+})();
+</script>
+</body>
+</html>

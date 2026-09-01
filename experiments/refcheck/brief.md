@@ -1,6 +1,6 @@
 # RefCheck — brief
 
-**Status:** queued (after PodNameFix and STLTidy)
+**Status:** BUILT AND TESTED, not yet launched (2026-09-01). Same hosting blocker as the other two — see `state/human-requests.md`. Source at `src/index.html`, self-contained, works fully offline.
 
 ## The pain
 Academics manually reformat reference lists and catch citation-style inconsistencies by hand, repeatedly, including after paying for reference-manager software that's supposed to solve exactly this.

@@ -54,3 +54,15 @@ Append-only. Never edit or delete history.
 **Reversibility:** cheap — static file, no infrastructure, deletable at zero cost.
 
 ---
+
+## [2026-09-01] Built and tested RefCheck (third shipped product — all 3 Phase 2 survivors now built)
+**Type:** product
+**Decision:** Built RefCheck (`experiments/refcheck/src/index.html`) — paste a reference list, one entry per line, and it flags (a) internal inconsistencies in year style (parenthetical vs bare), terminal punctuation, multi-author conjunction ("&" vs "and"), and author name order (Last-First vs First-Last), each reported against the list's own majority pattern, not any external journal-style database; and (b) likely duplicate entries via normalized edit-distance similarity. No journal-style matching, per the scope cut already recorded in the brief.
+**Because:** H2 in `state/hypotheses.md` — peer-reviewed evidence (n=372) that manuscript/reference formatting is scientists' single most-hated recurring task, with the pain persisting even for people already paying for reference-manager software.
+**Testing caught a real logic bug, not just a UI bug:** the "ending punctuation" check was configured to treat "no trailing period" as a non-applicable/ignored state (same pattern used correctly for "no year found" and "no conjunction found" elsewhere), which meant that check could mathematically never produce a finding — every non-period entry was excluded from its own comparison pool, so there was never a second value to disagree with. A crafted test list with intentionally inconsistent punctuation exposed this immediately (the check silently produced zero findings when it should have flagged 2 of 6 entries). Fixed by making "ends with period" vs "doesn't" both real, comparable values instead of one being treated as absence-of-signal. Re-ran the test and confirmed the fix, then ran a second test with a fully internally-consistent list to confirm zero false positives.
+**Alternatives rejected:** n/a — third of the three pre-committed Phase 2 survivors.
+**Falsifier:** stated in `experiments/refcheck/brief.md` — 21 days / 3 distribution attempts with no real usage, or academics saying internal-consistency checking without journal-style matching isn't valuable enough, kills it rather than expanding scope.
+**Reversibility:** cheap — static file, no infrastructure.
+**Note on what this makes true:** all three Phase 2 survivors are now built and tested. Nothing is publicly launched. The portfolio's actual bottleneck right now is 100% distribution (getting in front of real users), not product — worth remembering next cycle if the instinct is to build a fourth thing instead of solving the hosting blocker.
+
+---

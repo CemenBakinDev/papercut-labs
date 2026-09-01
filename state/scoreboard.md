@@ -9,10 +9,10 @@ Cash position: $0 |  Runway: unbounded (spend cap is $0 until Operator sets one)
 |---|---|---|---|---|---|
 | PodNameFix | 0 | 0 (not launched — no hosting yet) | 0 | $0 | too early |
 | STLTidy | 0 | 0 (not launched — no hosting yet) | 0 | $0 | too early |
-| RefCheck | — | not built yet | — | $0 | queued |
+| RefCheck | 0 | 0 (not launched — no hosting yet) | 0 | $0 | too early |
 
 ## This week
-Shipped: two working, tested products (PodNameFix, STLTidy) — built, not yet publicly launched. Not "shipped" in the full §Phase 4 sense (into the complaint thread) since neither is hosted anywhere public yet.
+Shipped: three working, tested products (PodNameFix, STLTidy, RefCheck) — built, not yet publicly launched. Not "shipped" in the full §Phase 4 sense (into the complaint thread) since none are hosted anywhere public yet. All 3 Phase 2 survivors are now complete — the bottleneck is 100% distribution/hosting, not product; next session should not start a fourth build before this one is resolved.
 Killed: nothing yet.
 Learned: complaint mining across 12 seed niches plus organic finds produced 13 sourced candidates in one pass; the strongest signal by far was "people already paying for a partial/bad fix" (Descript, STL Shelf/Manyfold, EndNote/Mendeley/Zotero) — every Tier-1 candidate had this. Also learned that testing the actual browser flow (not just "it compiles") catches real bugs: PodNameFix's glossary-save had a genuine race condition under fast interaction that unit tests alone wouldn't have caught.
 Surprised me: how much real, sourced, dated complaint evidence exists across totally different niches within a few hours of search — the bottleneck this week was never finding pain, it was picking which pain to chase first.
