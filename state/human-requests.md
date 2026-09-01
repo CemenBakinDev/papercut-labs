@@ -4,19 +4,22 @@ The Operator's inbox. Newest at top. Every entry must include Plan B.
 
 ---
 
-## [ ] 2026-09-01 — need an email inbox to sign up for free hosting
+## [ ] 2026-09-01 — email alone doesn't unblock hosting signup; need one more small step
 
-**Blocking:** Launching PodNameFix (built and tested today, see `experiments/podnamefix/`) publicly. Every free static-hosting option needs an account tied to an email I can receive mail at, and I don't have one. Costing: the tool sits finished but unseen — no revenue, no learning about whether the pain is real, until this is resolved.
+**Status update:** You gave me `jales2tuff@gmail.com` to use for signups (thank you — resolved my original ask cleanly). Tried to actually use it: attempted a non-interactive signup via the `surge` CLI (a free static host with a simple email+password flow, no domain purchase needed). It didn't work automatically — the signup prompt needs a real interactive terminal session, and even if I get past that, new accounts on basically every host (surge, GitHub, Netlify, Cloudflare Pages) send a verification email or code to confirm you own the address, which lands in an inbox I can't read. So the email unblocks *which* address to use, but not the verification step itself — that needs a human's hands once, at minimum.
 
-**Exact action:** either of these unblocks me:
-1. Give me an email alias to use for signing up for free accounts (GitHub, Netlify, Cloudflare Pages, etc.) under the Papercut Labs name — most providers (including yours, if ProtonMail) support free aliases in under 2 minutes, and it keeps business signups out of your main inbox.
-2. Or just tell me to use your real email directly if you don't mind business-account signup confirmations landing there — I won't do this by default since it wasn't explicitly authorized (see `state/decisions.md` 2026-09-01 entry).
+**Blocking:** Publicly launching PodNameFix, STLTidy, and RefCheck (all three built and tested, sitting in `experiments/*/src/index.html`). Costing: three finished free tools, zero users, zero learning about whether the underlying pain is real, until this resolves.
 
-**Why I can't:** Not explicitly RED, but close enough to the spirit of §10.1 (accounts tied to your identity) that I didn't want to act on my own read of it — this is exactly the "would I feel weird about the Operator reading this in the log" test in §4.
+**Exact action — pick whichever is least hassle for you:**
+1. **Fastest:** go to https://surge.sh, run `npx surge` in any folder (or I can talk you through it), sign up with `jales2tuff@gmail.com` and any password, then tell me the password you chose (or paste me the auth token from `~/.netrc` after running `surge login`, if you'd rather not share the password directly). I take it from there — deploying and redeploying via CLI needs no further verification once the account exists.
+2. **Or:** if a verification code/link lands in `jales2tuff@gmail.com`'s inbox after I trigger a signup, forward or paste it to me here and I'll finish the flow.
+3. **Or:** tell me to just wait — I'll hold everything else and pick this back up whenever you've done step 1.
 
-**If declined / no response:** I keep working the rest of the loop that doesn't need this — building STLTidy and RefCheck (queued, briefs already written), more complaint mining for the next cycle, refining PodNameFix based on my own testing. The tool stays finished-but-unlaunched until this is resolved; nothing else stalls.
+**Why I can't do this alone:** CAPTCHA and email-verification steps exist specifically to stop automated/bot signups — trying to defeat them would brush against Constitution rule 5 ("obey the rules of every platform you use"), so this is a case where the loop genuinely needs one human touch, not a case of me being overly cautious.
 
-**Estimated time:** 2 minutes.
+**If declined / no response:** everything else keeps moving — I can still refine the three built tools, do the next cycle's complaint mining, and prep more distribution research. Nothing else is blocked by this, only the actual public launch step.
+
+**Estimated time:** 3-5 minutes.
 
 ---
 

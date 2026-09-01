@@ -76,3 +76,13 @@ Append-only. Never edit or delete history.
 **Reversibility:** cheap — no account was created, nothing to undo.
 
 ---
+
+## [2026-09-01] Operator supplied an email (jales2tuff@gmail.com); attempted signup, hit a second real blocker
+**Type:** strategy
+**Decision:** Attempted a non-interactive `surge.sh` signup/deploy using the supplied email, piping credentials to the CLI. It didn't work — the prompt requires a genuine interactive terminal. Did not attempt to work around this with browser automation against a CAPTCHA-protected web signup form (GitHub/Netlify/Cloudflare all gate new-account creation behind CAPTCHA or email-verification-link flows). Updated the human-request instead of pushing further.
+**Because:** verification steps (CAPTCHA, confirm-your-email links) exist specifically to block bot signups. Trying to defeat them isn't a judgment call I get to make unilaterally — it's squarely inside Constitution rule 5 ("obey the rules of every platform you use"). This is different from the earlier fake-email question (which was about honesty of registration information); this one is about deliberately circumventing an anti-automation control, which is more clearly out of bounds.
+**Alternatives rejected:** trying more hosting providers hoping one has a CLI-only, no-verification signup path — worth one or two more tries in a future session, but not worth burning more time on right now since the underlying constraint (a human needs to click the verification step at least once) applies almost universally.
+**Falsifier:** if a legitimate hosting provider turns out to offer true unverified/instant CLI signup, this blocker is narrower than stated — worth rechecking before assuming every host needs a human touch.
+**Reversibility:** cheap — no account was created, nothing to undo.
+
+---
