@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PodNameFix — stop fixing the same misheard name every episode</title>
+<style>
+  :root{
+    --bg:#faf9f7; --panel:#ffffff; --ink:#1c1a17; --muted:#6b6459;
+    --accent:#b5651d; --accent-ink:#ffffff; --line:#e7e2d9; --flag:#fff4e0; --flag-line:#e0b573;
+    --good:#2f6b3a;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#17140f; --panel:#211d17; --ink:#f1ece2; --muted:#a89e8c;
+      --accent:#e08a3c; --accent-ink:#17140f; --line:#3a3327; --flag:#332711; --flag-line:#7a5420; --good:#7cc48a; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+  header{max-width:920px;margin:0 auto;padding:2.5rem 1.5rem 1rem}
+  h1{font-size:1.6rem;margin:0 0 .3rem}
+  .tag{color:var(--muted);font-size:1rem;margin:0 0 1.2rem}
+  main{max-width:920px;margin:0 auto;padding:0 1.5rem 3rem}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+  @media (max-width:720px){.grid{grid-template-columns:1fr}}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:1rem}
+  label{display:block;font-weight:600;font-size:.85rem;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);margin-bottom:.4rem}
+  textarea{width:100%;min-height:160px;resize:vertical;background:transparent;color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:.6rem;font:13px/1.5 ui-monospace,Menlo,Consolas,monospace}
+  .hint{color:var(--muted);font-size:.8rem;margin-top:.4rem}
+  button{background:var(--accent);color:var(--accent-ink);border:none;border-radius:6px;padding:.6rem 1.1rem;font-size:.9rem;font-weight:600;cursor:pointer}
+  button.secondary{background:transparent;color:var(--ink);border:1px solid var(--line)}
+  button:disabled{opacity:.5;cursor:default}
+  .actions{display:flex;gap:.6rem;margin:1.2rem 0;flex-wrap:wrap;align-items:center}
+  .results{margin-top:1.5rem}
+  .candidate{background:var(--flag);border:1px solid var(--flag-line);border-radius:8px;padding:.7rem .9rem;margin-bottom:.6rem;display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap}
+  .candidate .info{flex:1;min-width:220px}
+  .candidate .found{font-weight:600}
+  .candidate .arrow{color:var(--muted);margin:0 .3rem}
+  .candidate .suggest{font-weight:600;color:var(--accent)}
+  .candidate .meta{color:var(--muted);font-size:.78rem;margin-top:.2rem}
+  .candidate .ctx{color:var(--muted);font-size:.8rem;font-style:italic;margin-top:.2rem}
+  .candidate .btns{display:flex;gap:.4rem}
+  .candidate.accepted{opacity:.55}
+  .empty{color:var(--muted);font-size:.9rem;padding:1rem 0}
+  .count-badge{background:var(--accent);color:var(--accent-ink);border-radius:999px;padding:.05rem .5rem;font-size:.75rem;margin-left:.4rem}
+  footer{max-width:920px;margin:2rem auto 0;padding:1.2rem 1.5rem;border-top:1px solid var(--line);color:var(--muted);font-size:.8rem}
+  footer a{color:var(--muted)}
+  .savedmsg{color:var(--good);font-size:.78rem}
+</style>
+</head>
+<body>
+<header>
+  <h1>PodNameFix</h1>
+  <p class="tag">You already fixed this name last episode. Stop doing it by hand again.</p>
+</header>
+<main>
+  <div class="grid">
+    <div class="panel">
+      <label for="glossary">Your glossary — names &amp; terms your transcript tool keeps getting wrong (one per line)</label>
+      <textarea id="glossary" placeholder="Xzavier Nkomo
+Studio Ghibli
+Kubernetes
+Aoife Byrne"></textarea>
+      <p class="hint" id="glossaryHint">Saved in this browser only — nothing is ever uploaded anywhere.</p>
+    </div>
+    <div class="panel">
+      <label for="transcript">Paste your transcript (plain text or .srt)</label>
+      <textarea id="transcript" placeholder="Paste the transcript your editing tool spat out..."></textarea>
+      <p class="hint">SRT timestamps are detected automatically and left untouched.</p>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button id="scanBtn">Scan for likely mis-hearings</button>
+    <button id="applyBtn" class="secondary" disabled>Apply accepted corrections &amp; download</button>
+    <span id="statusMsg" class="hint"></span>
+  </div>
+
+  <div class="results" id="results"></div>
+</main>
+<footer>
+  This is a free tool, no sign-up, nothing leaves your browser — everything runs client-side in JavaScript.
+  It's a heuristic: it flags words that <em>sound like</em> a glossary term but don't match exactly, for you to review — it doesn't claim to catch everything or to always be right. Built and maintained by Papercut Labs, an AI-operated project.
+</footer>
+
+<script>
+(function(){
+  "use strict";
+
+  var GLOSSARY_KEY = "podnamefix_glossary_v1";
+  var glossaryEl = document.getElementById("glossary");
+  var transcriptEl = document.getElementById("transcript");
+  var scanBtn = document.getElementById("scanBtn");
+  var applyBtn = document.getElementById("applyBtn");
+  var resultsEl = document.getElementById("results");
+  var statusEl = document.getElementById("statusMsg");
+  var glossaryHint = document.getElementById("glossaryHint");
+
+  try {
+    var saved = localStorage.getItem(GLOSSARY_KEY);
+    if (saved) glossaryEl.value = saved;
+  } catch (e) { /* localStorage unavailable, degrade silently */ }
+
+  var saveTimer = null;
+  function saveGlossaryNow(){
+    clearTimeout(saveTimer);
+    try {
+      localStorage.setItem(GLOSSARY_KEY, glossaryEl.value);
+      glossaryHint.innerHTML = 'Saved in this browser only — nothing is ever uploaded anywhere. <span class="savedmsg">Saved.</span>';
+      setTimeout(function(){
+        glossaryHint.textContent = "Saved in this browser only — nothing is ever uploaded anywhere.";
+      }, 1500);
+    } catch (e) { /* localStorage unavailable, degrade silently */ }
+  }
+  glossaryEl.addEventListener("input", function(){
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveGlossaryNow, 400);
+  });
+  glossaryEl.addEventListener("blur", saveGlossaryNow);
+  window.addEventListener("beforeunload", saveGlossaryNow);
+
+  var STOPWORDS = new Set(("the and that this with from have they will your about there their would could should "+
+    "into than then when what which while where been were does don't doesn't it's i'm you're we're they're "+
+    "cant can't wont won't just like know think going want made make good well right okay yeah actually really "+
+    "because before after around still even also very much more most some such only over under again here "+
+    "these those been being are was were had has did not you your our out its").split(/\s+/));
+
+  function levenshtein(a, b){
+    a = a.toLowerCase(); b = b.toLowerCase();
+    var m = a.length, n = b.length;
+    if (m === 0) return n;
+    if (n === 0) return m;
+    var prev = new Array(n+1);
+    var cur = new Array(n+1);
+    for (var j=0;j<=n;j++) prev[j]=j;
+    for (var i=1;i<=m;i++){
+      cur[0]=i;
+      for (var j2=1;j2<=n;j2++){
+        var cost = a[i-1]===b[j2-1] ? 0 : 1;
+        cur[j2] = Math.min(prev[j2]+1, cur[j2-1]+1, prev[j2-1]+cost);
+      }
+      var tmp = prev; prev = cur; cur = tmp;
+    }
+    return prev[n];
+  }
+
+  function phoneticKey(word){
+    var w = word.toLowerCase().replace(/[^a-z]/g,"");
+    if (!w) return "";
+    w = w.replace(/s$/,"");
+    w = w.replace(/(.)\1+/g,"$1");
+    var first = w[0];
+    var rest = w.slice(1).replace(/[aeiouhwy]/g,"");
+    return first + rest;
+  }
+
+  function matchCase(sourceWord, targetWord){
+    if (sourceWord === sourceWord.toUpperCase() && sourceWord.length > 1) return targetWord.toUpperCase();
+    if (sourceWord[0] === sourceWord[0].toUpperCase()) {
+      return targetWord.charAt(0).toUpperCase() + targetWord.slice(1);
+    }
+    return targetWord;
+  }
+
+  function buildVocabulary(glossaryText){
+    var terms = glossaryText.split(/[\n,]/).map(function(s){return s.trim();}).filter(Boolean);
+    var vocab = []; // {display: original glossary term text, key: lowercase, phon: phoneticKey}
+    var seen = new Set();
+    terms.forEach(function(term){
+      var words = term.split(/\s+/).filter(Boolean);
+      words.forEach(function(w){
+        var key = w.toLowerCase();
+        if (seen.has(key) || w.length < 3) return;
+        seen.add(key);
+        vocab.push({ display: w, key: key, phon: phoneticKey(w) });
+      });
+      if (words.length > 1) {
+        var key = term.toLowerCase();
+        if (!seen.has(key)) {
+          seen.add(key);
+          vocab.push({ display: term, key: key, phon: phoneticKey(term) });
+        }
+      }
+    });
+    return vocab;
+  }
+
+  function isSRT(text){
+    return /\d{2}:\d{2}:\d{2}[,.]\d{3}\s*-->\s*\d{2}:\d{2}:\d{2}[,.]\d{3}/.test(text);
+  }
+
+  function findCandidates(transcript, vocab){
+    var tokenRe = /[A-Za-z][A-Za-z'-]{1,}/g;
+    var matches = transcript.match(tokenRe) || [];
+    var counts = {}; // lowercase token -> {display, count, firstIndex}
+    var idx = 0;
+    var m;
+    tokenRe.lastIndex = 0;
+    while ((m = tokenRe.exec(transcript)) !== null){
+      var tok = m[0];
+      var lower = tok.toLowerCase();
+      if (tok.length < 3 || STOPWORDS.has(lower)) continue;
+      if (!counts[lower]) counts[lower] = { display: tok, count: 0, firstIndex: m.index };
+      counts[lower].count++;
+    }
+
+    var vocabKeySet = {};
+    vocab.forEach(function(v){ vocabKeySet[v.key] = true; });
+
+    var candidates = [];
+    Object.keys(counts).forEach(function(lower){
+      if (vocabKeySet[lower]) return; // already exact match to glossary, nothing to flag
+      var entry = counts[lower];
+      var best = null, bestScore = Infinity;
+      vocab.forEach(function(v){
+        if (v.key === lower) return;
+        var dist = levenshtein(lower, v.key);
+        var maxLen = Math.max(lower.length, v.key.length);
+        if (dist === 0) return;
+        var phonMatch = v.phon && v.phon === phoneticKey(lower);
+        var threshold = Math.max(1, Math.floor(maxLen * 0.32));
+        var qualifies = dist <= threshold || (phonMatch && dist <= threshold + 2);
+        if (!qualifies) return;
+        var score = dist - (phonMatch ? 1 : 0);
+        if (score < bestScore) { bestScore = score; best = v; }
+      });
+      if (best) {
+        var context = "";
+        var start = Math.max(0, entry.firstIndex - 30);
+        var end = Math.min(transcript.length, entry.firstIndex + entry.display.length + 30);
+        context = transcript.slice(start, end).replace(/\s+/g," ").trim();
+        candidates.push({
+          original: entry.display,
+          originalLower: lower,
+          suggestion: matchCase(entry.display, best.display),
+          count: entry.count,
+          context: "…" + context + "…"
+        });
+      }
+    });
+
+    candidates.sort(function(a,b){ return b.count - a.count; });
+    return candidates;
+  }
+
+  var currentCandidates = [];
+  var acceptedSet = new Set();
+
+  function render(){
+    resultsEl.innerHTML = "";
+    if (currentCandidates.length === 0) {
+      resultsEl.innerHTML = '<p class="empty">No likely mis-hearings found against your glossary. (Scan again after editing either box.)</p>';
+      applyBtn.disabled = true;
+      return;
+    }
+    currentCandidates.forEach(function(c, i){
+      var div = document.createElement("div");
+      div.className = "candidate" + (acceptedSet.has(i) ? " accepted" : "");
+      var info = document.createElement("div");
+      info.className = "info";
+      info.innerHTML = '<span class="found">"' + escapeHtml(c.original) + '"</span>' +
+        '<span class="arrow">→</span><span class="suggest">' + escapeHtml(c.suggestion) + "</span>" +
+        '<span class="count-badge">' + c.count + (c.count===1?" occurrence":" occurrences") + "</span>" +
+        '<div class="ctx">' + escapeHtml(c.context) + "</div>";
+      var btns = document.createElement("div");
+      btns.className = "btns";
+      var btn = document.createElement("button");
+      btn.textContent = acceptedSet.has(i) ? "Accepted ✓" : "Accept";
+      btn.className = acceptedSet.has(i) ? "secondary" : "";
+      btn.addEventListener("click", function(){
+        if (acceptedSet.has(i)) acceptedSet.delete(i); else acceptedSet.add(i);
+        render();
+      });
+      btns.appendChild(btn);
+      div.appendChild(info);
+      div.appendChild(btns);
+      resultsEl.appendChild(div);
+    });
+    applyBtn.disabled = acceptedSet.size === 0;
+  }
+
+  function escapeHtml(s){
+    return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+
+  scanBtn.addEventListener("click", function(){
+    var vocab = buildVocabulary(glossaryEl.value);
+    var transcript = transcriptEl.value;
+    if (!transcript.trim()) {
+      statusEl.textContent = "Paste a transcript first.";
+      return;
+    }
+    if (vocab.length === 0) {
+      statusEl.textContent = "Add at least one glossary term first.";
+      return;
+    }
+    currentCandidates = findCandidates(transcript, vocab);
+    acceptedSet = new Set();
+    statusEl.textContent = currentCandidates.length + " candidate(s) found.";
+    render();
+  });
+
+  applyBtn.addEventListener("click", function(){
+    var transcript = transcriptEl.value;
+    var toApply = currentCandidates.filter(function(c, i){ return acceptedSet.has(i); });
+    toApply.sort(function(a,b){ return b.original.length - a.original.length; });
+    toApply.forEach(function(c){
+      var re = new RegExp("\\b" + c.original.replace(/[.*+?^${}()|[\]\\]/g,"\\$&") + "\\b", "g");
+      transcript = transcript.replace(re, c.suggestion);
+    });
+    var blob = new Blob([transcript], {type:"text/plain"});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    var ext = isSRT(transcriptEl.value) ? "srt" : "txt";
+    a.href = url;
+    a.download = "corrected-transcript." + ext;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    transcriptEl.value = transcript;
+    statusEl.textContent = "Downloaded corrected transcript. Text box updated too — scan again if you want to keep going.";
+  });
+})();
+</script>
+</body>
+</html>
